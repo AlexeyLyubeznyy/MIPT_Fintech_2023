@@ -1,0 +1,244 @@
+#!/usr/bin/env python
+# coding: utf-8
+
+# In[1]:
+
+
+from sklearn.datasets import load_iris
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib import colors
+from sklearn.preprocessing import StandardScaler
+
+
+# In[5]:
+
+
+iris = load_iris()
+
+
+# In[6]:
+
+
+print(iris.DESCR)
+
+
+# In[21]:
+
+
+# загружаем данные в датафрейм
+data_raw = pd.DataFrame(iris.data, columns=iris.feature_names)
+data_class = iris.target
+
+
+# In[22]:
+
+
+data_raw
+
+
+# In[24]:
+
+
+data = data[['sepal length (cm)','sepal width (cm)']]
+data.head()
+
+
+# In[25]:
+
+
+data_class
+
+
+# In[26]:
+
+
+# разделяем выборку на тренировочную и тестовую
+from sklearn.model_selection import train_test_split
+X_train, X_test, y_train, y_test = train_test_split(data, data_class, test_size=0.25, random_state=42)
+
+
+# In[27]:
+
+
+len(y_test)
+
+
+# In[12]:
+
+
+# импортируем LDA-функционал
+from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
+
+
+# In[13]:
+
+
+lda = LinearDiscriminantAnalysis()
+
+
+# In[28]:
+
+
+# обучаем данные
+lda.fit(X_train, y_train)
+
+
+# In[29]:
+
+
+# делаем прогноз на тестовой выборке
+lda.predict(X_test)
+
+
+# In[30]:
+
+
+# смотрим разницу факта и прогноза
+result = pd.DataFrame([y_test, lda.predict(X_test)]).T
+
+
+# In[31]:
+
+
+result
+
+
+# In[18]:
+
+
+# расчет точности - отношение верных прогнозов к общему количеству позиций
+# является хорошей метрикой для сбалансированных классов
+# (наблюдений в категориях примерно одинаковое количество)
+
+from sklearn.metrics import accuracy_score
+
+
+# In[32]:
+
+
+accuracy_score(y_test, lda.predict(X_test))
+
+
+# In[33]:
+
+
+# коэффициенты дискриминатных линий
+lda.coef_
+
+
+# In[34]:
+
+
+# визуализируем дискриминантные линии только по 2 признакам
+small_train = X_train[['sepal length (cm)', 'sepal width (cm)']]
+small_test = X_test[['sepal length (cm)', 'sepal width (cm)']]
+
+
+# In[42]:
+
+
+X_test[['sepal length (cm)', 'sepal width (cm)']]
+
+
+# In[44]:
+
+
+plt.scatter(x=small_test['sepal length (cm)'], y=small_test['sepal width (cm)'], c=y_test)
+plt.scatter(lda.means_[:, 0], lda.means_[:, 1], c='r', s=150, marker='*')
+
+plt.show()
+
+
+# In[45]:
+
+
+from sklearn.cluster import KMeans
+
+
+# In[50]:
+
+
+# явно указываем количество кластеров
+kmeans = KMeans(n_clusters=3)
+# fit_predict обучается на данных и каждому объекту присваивает кластер
+clusters = kmeans.fit_predict(data)
+clusters
+
+
+# In[52]:
+
+
+plt.scatter(data['sepal length (cm)'], data['sepal width (cm)'], cmap='viridis', c=clusters, s=60)
+
+
+# In[53]:
+
+
+# строим график локтя
+
+# создаем список для инерции
+k_inertia = []
+# задаем диапазон кластеров
+ks = range(1, 20)
+
+for k in ks:
+    clf_kmeans = KMeans(n_clusters=k)
+    clf_kmeans.fit_predict(data)
+    # добавляем инерцию каждой модели в список
+    k_inertia.append(clf_kmeans.inertia_)
+
+
+# In[54]:
+
+
+plt.plot(ks, k_inertia)
+plt.plot(ks, k_inertia ,'ro')
+
+
+# In[55]:
+
+
+from scipy.spatial.distance import pdist
+from scipy.cluster import hierarchy
+
+
+# In[57]:
+
+
+# строим дендрограмму
+distance_mat = pdist(data) # pdist посчитает нам матрицу попарных расстояний между точками
+# Z = hierarchy.linkage(distance_mat) # linkage — реализация агломеративного алгоритма
+Z = hierarchy.linkage(distance_mat, 'ward')
+plt.figure(figsize=(20, 9))
+dn = hierarchy.dendrogram(Z)
+
+
+# In[58]:
+
+
+# делаем уже кластеризацию по факту
+from sklearn.cluster import AgglomerativeClustering
+
+
+# In[60]:
+
+
+aglo = AgglomerativeClustering(n_clusters=3)
+clusters = aglo.fit_predict(data)
+clusters
+
+
+# In[61]:
+
+
+plt.scatter(data['sepal length (cm)'], data['sepal width (cm)'],cmap='autumn', c=clusters, s=60)
+
+
+# In[62]:
+
+
+data['y_hat'] = clusters
+data
+
